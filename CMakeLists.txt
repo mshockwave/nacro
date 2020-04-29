@@ -34,9 +34,14 @@ if(NOT ${LLVM_ENABLE_RTTI})
 endif()
 
 set(_SOURCE_FILES
-    PlaygroundPlugin.cpp)
+    NacroPragmaHandler.cpp
+    NacroParsers.cpp
+    NacroExpander.cpp
+    NacroVerifier.cpp
+    )
 
-add_llvm_library(ClangNewMacro MODULE
+add_llvm_library(NacroPlugin MODULE
   ${_SOURCE_FILES}
   PLUGIN_TOOL clang)
 
+add_subdirectory(Playground)
