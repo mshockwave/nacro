@@ -30,6 +30,22 @@ struct NacroRule {
 private:
   /// a.k.a Macro rule arguments
   llvm::SmallVector<Replacement, 2> Replacements;
+
+public:
+  using repl_iterator
+    = typename decltype(Replacements)::iterator;
+
+  repl_iterator replacement_begin() {
+    return Replacements.begin();
+  }
+
+  repl_iterator replacement_end() {
+    return Replacements.end();
+  }
+
+  size_t replacements_size() const {
+    return Replacements.size();
+  }
 };
 } // end namespace clang
 #endif

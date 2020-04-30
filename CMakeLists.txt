@@ -47,18 +47,18 @@ set(_SOURCE_FILES
     )
 
 add_llvm_library(NacroPlugin MODULE
-  ${_SOURCE_FILES}
-  PLUGIN_TOOL clang)
+                 ${_SOURCE_FILES}
+                 PLUGIN_TOOL clang)
 
 #add_subdirectory(Playground)
 
 if(${NACRO_BUILD_LIB} OR ${NACRO_ENABLE_UNITTESTS})
   add_library(Nacro SHARED
-    ${_SOURCE_FILES})
-  # FIXME: For convenient, we link directly
-  # against the jumbo libLLVM.so
+              ${_SOURCE_FILES})
   target_link_libraries(Nacro
-                        clang LLVM)
+                        clangBasic
+                        clangLex
+                        clangAST)
 endif()
 
 if(${NACRO_ENABLE_UNITTESTS})

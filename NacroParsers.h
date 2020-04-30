@@ -34,6 +34,8 @@ public:
     : NacroParser(PP, Params),
       CurrentRule(new NacroRule()) {}
 
+  NacroRule& getNacroRule() { return *CurrentRule; }
+
   bool ParseArgList();
 
   void Parse() override;
