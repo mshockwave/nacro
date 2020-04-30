@@ -33,8 +33,14 @@ if(NOT ${LLVM_ENABLE_RTTI})
   # compilers
 endif()
 
+option(NACRO_ENABLE_UNITTESTS "Enable unit tests for naco" OFF)
+# FIXME: What about static lib?
+option(NACRO_BUILD_LIB
+       "Enable building a shared library containing all nacro functions" OFF)
+
 set(_SOURCE_FILES
     NacroPragmaHandler.cpp
+    NacroRule.cpp
     NacroParsers.cpp
     NacroExpander.cpp
     NacroVerifier.cpp
@@ -44,4 +50,17 @@ add_llvm_library(NacroPlugin MODULE
   ${_SOURCE_FILES}
   PLUGIN_TOOL clang)
 
-add_subdirectory(Playground)
+#add_subdirectory(Playground)
+
+if(${NACRO_BUILD_LIB} OR ${NACRO_ENABLE_UNITTESTS})
+  add_library(Nacro SHARED
+    ${_SOURCE_FILES})
+  # FIXME: For convenient, we link directly
+  # against the jumbo libLLVM.so
+  target_link_libraries(Nacro
+                        clang LLVM)
+endif()
+
+if(${NACRO_ENABLE_UNITTESTS})
+  add_subdirectory(unittest)
+endif()
