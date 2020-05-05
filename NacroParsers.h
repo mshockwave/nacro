@@ -4,6 +4,7 @@
 #include "clang/Lex/Preprocessor.h"
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/StringRef.h"
 #include "NacroRule.h"
 #include <memory>
@@ -22,12 +23,16 @@ protected:
   void CreateNewMacroDef(llvm::StringRef Name, llvm::ArrayRef<Token> Body);
 
 public:
-  virtual void Parse() = 0;
+  virtual bool Parse() = 0;
 };
 
 class NacroRuleParser : public NacroParser {
   // Owner of this instance
   std::unique_ptr<NacroRule> CurrentRule;
+
+  /// All of the braces in a rule must match.
+  /// This stack is used to reduce pair of braces.
+  llvm::SmallVector<Token, 2> BraceStack;
 
 public:
   NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params)
@@ -38,7 +43,12 @@ public:
 
   bool ParseArgList();
 
-  void Parse() override;
+  bool ParseStmts();
+
+  llvm::Optional<NacroRule::Loop> ParseLoopHeader();
+  bool ParseLoop();
+
+  bool Parse() override;
 };
 } // end namespace clang
 #endif
