@@ -12,17 +12,24 @@
 namespace clang {
 class NacroParser {
 protected:
+  /// #pragma nacro <category> [pragma params...]
   llvm::ArrayRef<Token> PragmaParams;
 
   Preprocessor& PP;
 
+  bool HasEncounteredError;
+
   NacroParser(Preprocessor& PP, llvm::ArrayRef<Token> PragmaParams)
     : PragmaParams(PragmaParams),
-      PP(PP) {}
-
-  void CreateNewMacroDef(llvm::StringRef Name, llvm::ArrayRef<Token> Body);
+      PP(PP),
+      HasEncounteredError(false) {}
 
 public:
+  /// False if there is an error
+  virtual operator bool() const {
+    return !HasEncounteredError;
+  }
+
   virtual bool Parse() = 0;
 };
 
@@ -35,18 +42,19 @@ class NacroRuleParser : public NacroParser {
   llvm::SmallVector<Token, 2> BraceStack;
 
 public:
-  NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params)
-    : NacroParser(PP, Params),
-      CurrentRule(new NacroRule()) {}
+  NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params);
 
   NacroRule& getNacroRule() { return *CurrentRule; }
+  std::unique_ptr<NacroRule> releaseNacroRule() {
+    return std::move(CurrentRule);
+  }
 
   bool ParseArgList();
 
   bool ParseStmts();
 
   llvm::Optional<NacroRule::Loop> ParseLoopHeader();
-  bool ParseLoop();
+  bool ParseLoop(Token LoopTok);
 
   bool Parse() override;
 };

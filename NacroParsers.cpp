@@ -9,7 +9,20 @@ using llvm::StringRef;
 using llvm::ArrayRef;
 using llvm::Optional;
 
-void NacroParser::CreateNewMacroDef(StringRef Name, ArrayRef<Token> Body) {
+NacroRuleParser::NacroRuleParser(Preprocessor& PP, ArrayRef<Token> Params)
+  : NacroParser(PP, Params) {
+  IdentifierInfo* NameII = nullptr;
+  if(PragmaParams.size() > 0) {
+    auto NameTok = PragmaParams[0];
+    if(NameTok.isNot(tok::identifier)) {
+      PP.Diag(NameTok, diag::err_expected) << "rule name identifier";
+      HasEncounteredError = true;
+    } else {
+      NameII = NameTok.getIdentifierInfo();
+      assert(NameII);
+    }
+  }
+  CurrentRule = std::make_unique<NacroRule>(NameII);
 }
 
 bool NacroRuleParser::ParseArgList() {
@@ -75,20 +88,19 @@ bool NacroRuleParser::ParseStmts() {
   BraceStack.push_back(Tok);
 
   while(!BraceStack.empty()) {
-    Tok = PP.LookAhead(0);
+    PP.Lex(Tok);
     // Handle some special directives
     if(Tok.is(tok::identifier)) {
       auto* II = Tok.getIdentifierInfo();
       assert(II);
       if(II->isStr("$loop")) {
-        if(!ParseLoop()) return false;
+        if(!ParseLoop(Tok)) return false;
         continue;
       } else if(II->isStr("$str")) {
         // TODO
       }
     }
 
-    PP.Lex(Tok);
     if(Tok.is(tok::eof)) {
       PP.Diag(Tok, diag::err_expected)
         << "'}'. Might be caused by mismatch braces";
@@ -160,28 +172,27 @@ Optional<NacroRule::Loop> NacroRuleParser::ParseLoopHeader() {
   return NacroRule::Loop{IV, IterRange};
 }
 
-bool NacroRuleParser::ParseLoop() {
-  Token Tok;
-  PP.Lex(Tok);
-  assert(Tok.is(tok::identifier) && Tok.getIdentifierInfo());
-  auto* II = Tok.getIdentifierInfo();
-  assert(II->isStr("$loop"));
+bool NacroRuleParser::ParseLoop(Token LoopTok) {
+  assert(LoopTok.is(tok::identifier));
+  auto* II = LoopTok.getIdentifierInfo();
+  assert(II && II->isStr("$loop"));
 
   auto LH = ParseLoopHeader();
   if(!LH) return false;
 
   // Use everything (especially the SrcLoc) from `$loop`
   // except the token kind
-  Tok.setKind(tok::annot_pragma_loop_hint);
-  CurrentRule->AddToken(Tok);
+  LoopTok.setKind(tok::annot_pragma_loop_hint);
+  CurrentRule->AddToken(LoopTok);
   auto LoopTokStartIdx = CurrentRule->token_size() - 1;
 
   // Parse the loop body
   if(!ParseStmts()) return false;
 
-  Tok.startToken();
-  Tok.setKind(tok::annot_pragma_loop_hint);
-  CurrentRule->AddToken(Tok);
+  Token LoopEndTok;
+  LoopEndTok.startToken();
+  LoopEndTok.setKind(tok::annot_pragma_loop_hint);
+  CurrentRule->AddToken(LoopEndTok);
   auto LoopTokEndIdx = CurrentRule->token_size() - 1;
 
   CurrentRule->AddLoop(LoopTokStartIdx, LoopTokEndIdx, *LH);
@@ -190,6 +201,8 @@ bool NacroRuleParser::ParseLoop() {
 }
 
 bool NacroRuleParser::Parse() {
+  if(HasEncounteredError) return false;
+
   Token Tok;
   Tok.startToken();
 
@@ -199,6 +212,8 @@ bool NacroRuleParser::Parse() {
     PP.Diag(Tok, diag::err_expected) << tok::l_paren;
     return false;
   }
+
+  CurrentRule->setBeginLoc(Tok.getLocation());
 
   if(!ParseArgList()) return false;
 

@@ -6,6 +6,7 @@
 #include "llvm/Support/raw_ostream.h"
 
 #include "NacroParsers.h"
+#include "NacroExpander.h"
 #include <memory>
 
 using namespace clang;
@@ -42,10 +43,17 @@ void NacroPragmaHandler::HandlePragma(Preprocessor &PP,
   } while(Tok.isNot(tok::eod));
 
   if(Category == "rule") {
-    // TODO: Wire to parser
+    NacroRuleParser Parser(PP, PragmaArgs);
+    if(!Parser.Parse()) return;
+    auto Rule = Parser.releaseNacroRule();
+
+    NacroRuleExpander Expander(*Rule, PP);
+    if(Expander.Expand()) return;
   } else {
     llvm::errs() << "Unrecognized category: "
                  << Category << "\n";
   }
 }
+
+PragmaHandlerRegistry::Add<NacroPragmaHandler> X("nacro", "New Macro");
 } // end anonymous namespace

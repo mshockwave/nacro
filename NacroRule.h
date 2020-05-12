@@ -4,6 +4,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/IntervalMap.h"
+#include "llvm/ADT/iterator_range.h"
 #include "clang/Lex/Preprocessor.h"
 
 namespace clang {
@@ -48,7 +49,22 @@ struct NacroRule {
     }
   };
 
+  /// null if name is not set
+  IdentifierInfo* getName() const { return Name; }
+
+  void setBeginLoc(SourceLocation Loc) {
+    BeginLoc = Loc;
+  }
+
+  SourceLocation getBeginLoc() const { return BeginLoc; }
+
 private:
+  IdentifierInfo* Name;
+
+  /// Location to the beginning of the rule
+  /// (not the beginning of the pragma)
+  SourceLocation BeginLoc;
+
   /// a.k.a Macro rule arguments
   llvm::SmallVector<Replacement, 2> Replacements;
 
@@ -63,6 +79,11 @@ private:
   LoopIntervalsTy Loops;
 
 public:
+  NacroRule(IdentifierInfo* NameII)
+    : Name(NameII), BeginLoc(),
+      LoopIntervalAlloc(),
+      Loops(LoopIntervalAlloc) {}
+
   using repl_iterator
     = typename decltype(Replacements)::iterator;
 
@@ -74,26 +95,39 @@ public:
     return Replacements.end();
   }
 
+  auto replacements() {
+    return llvm::make_range(replacement_begin(),
+                            replacement_end());
+  }
+
   size_t replacements_size() const {
     return Replacements.size();
   }
 
   using token_iterator =
-    typename decltype(Tokens)::const_iterator;
+    typename decltype(Tokens)::iterator;
 
-  token_iterator token_begin() const {
+  token_iterator token_begin() {
     return Tokens.begin();
   }
 
-  token_iterator token_end() const {
+  token_iterator token_end() {
     return Tokens.end();
   }
 
   size_t token_size() const { return Tokens.size(); }
 
-  NacroRule()
-    : LoopIntervalAlloc(),
-      Loops(LoopIntervalAlloc) {}
+  auto tokens() {
+    return llvm::make_range(token_begin(), token_end());
+  }
+
+  token_iterator insert_token(token_iterator pos, const Token& tok) {
+    return Tokens.insert(pos, tok);
+  }
+
+  token_iterator erase_token(token_iterator pos) {
+    return Tokens.erase(pos);
+  }
 
   void AddLoop(size_t StartIdx, size_t EndIdx,
                const Loop& LP) {
@@ -118,6 +152,13 @@ public:
   const_loop_iterator loop_end() const {
     return Loops.end();
   }
+
+  bool loop_empty() const {
+    return !loop_begin().valid();
+  }
+
+  /// Require installing PPCallbacks (e.g. loops)
+  bool needsPPHooks() const;
 };
 } // end namespace clang
 #endif

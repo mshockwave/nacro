@@ -21,3 +21,8 @@ void NacroRule::AddReplacement(IdentifierInfo* II, ReplacementTy Ty,
                                bool VarArgs) {
   Replacements.push_back({II, Ty, VarArgs});
 }
+
+bool NacroRule::needsPPHooks() const {
+  // For now only loops need PPCallbacks
+  return !loop_empty();
+}

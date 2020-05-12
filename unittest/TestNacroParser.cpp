@@ -41,7 +41,9 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
   auto PP = GetPP("$loop($i in $iter){ puts($i); }");
   NacroRuleParser Parser(*PP, {});
 
-  ASSERT_TRUE(Parser.ParseLoop());
+  Token LoopTok;
+  PP->Lex(LoopTok);
+  ASSERT_TRUE(Parser.ParseLoop(LoopTok));
 
   auto& Rule = Parser.getNacroRule();
   auto LI = Rule.loop_begin();
