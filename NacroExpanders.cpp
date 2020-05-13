@@ -3,7 +3,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "clang/Lex/MacroInfo.h"
-#include "NacroExpander.h"
+#include "NacroExpanders.h"
 #include <iterator>
 
 using namespace clang;

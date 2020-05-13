@@ -42,7 +42,7 @@ set(_SOURCE_FILES
     NacroPragmaHandler.cpp
     NacroRule.cpp
     NacroParsers.cpp
-    NacroExpander.cpp
+    NacroExpanders.cpp
     NacroVerifier.cpp
     )
 
