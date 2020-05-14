@@ -7,7 +7,23 @@
 #include <iterator>
 
 using namespace clang;
+using llvm::ArrayRef;
 using llvm::Error;
+
+void NacroRuleExpander::CreateMacroDirective(IdentifierInfo* Name,
+                                             SourceLocation BeginLoc,
+                                             ArrayRef<IdentifierInfo*> Args,
+                                             ArrayRef<Token> Body) {
+  auto* MI = PP.AllocateMacroInfo(BeginLoc);
+  MI->setIsFunctionLike();
+
+  for(auto Tok : Body) {
+    MI->AddTokenToBody(Tok);
+  }
+
+  MI->setParameterList(Args, PP.getPreprocessorAllocator());
+  PP.appendDefMacroDirective(Name, MI);
+}
 
 Error NacroRuleExpander::ReplacementProtecting() {
   using namespace llvm;
@@ -79,19 +95,12 @@ Error NacroRuleExpander::Expand() {
 
   if(!Rule.needsPPHooks()) {
     // export as a normal macro function
-    auto* MI = PP.AllocateMacroInfo(Rule.getBeginLoc());
-    MI->setIsFunctionLike();
-
-    for(auto Tok : Rule.tokens()) {
-      MI->AddTokenToBody(Tok);
-    }
-
     llvm::SmallVector<IdentifierInfo*, 2> ReplacementsII;
     llvm::transform(Rule.replacements(), std::back_inserter(ReplacementsII),
                     [](NacroRule::Replacement& R) { return R.Identifier; });
-    MI->setParameterList(ReplacementsII, PP.getPreprocessorAllocator());
-
-    PP.appendDefMacroDirective(Rule.getName(), MI);
+    CreateMacroDirective(Rule.getName(), Rule.getBeginLoc(),
+                         ReplacementsII,
+                         ArrayRef<Token>(Rule.token_begin(), Rule.token_end()));
   } else if(!Rule.loop_empty()) {
     if(auto E = LoopExpanding())
       return E;

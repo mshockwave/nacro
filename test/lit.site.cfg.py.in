@@ -1,0 +1,9 @@
+import os
+
+config.llvm_bin_dir = os.path.join(r'@LLVM_BUILD_BINARY_DIR@', 'bin')
+config.llvm_lib_dir = r'@LLVM_BUILD_LIBRARY_DIR@'
+config.nacro_src_root = r'@CMAKE_SOURCE_DIR@'
+config.nacro_obj_root = r'@CMAKE_BINARY_DIR@'
+
+lit_config.load_config(
+        config, os.path.join(config.nacro_src_root, "test/lit.cfg.py"))

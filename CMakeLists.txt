@@ -37,6 +37,7 @@ option(NACRO_ENABLE_UNITTESTS "Enable unit tests for naco" OFF)
 # FIXME: What about static lib?
 option(NACRO_BUILD_LIB
        "Enable building a shared library containing all nacro functions" OFF)
+option(NACRO_ENABLE_TESTS "Enable end-to-end tests for naco" OFF)
 
 set(_SOURCE_FILES
     NacroPragmaHandler.cpp
@@ -63,4 +64,8 @@ endif()
 
 if(${NACRO_ENABLE_UNITTESTS})
   add_subdirectory(unittest)
+endif()
+
+if(${NACRO_ENABLE_TESTS})
+  add_subdirectory(test)
 endif()

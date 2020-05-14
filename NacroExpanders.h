@@ -1,3 +1,4 @@
+#include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/Error.h"
 #include "clang/Lex/Preprocessor.h"
 #include "NacroRule.h"
@@ -11,6 +12,10 @@ class NacroRuleExpander {
   NacroRule& Rule;
 
   Preprocessor& PP;
+
+  void CreateMacroDirective(IdentifierInfo* Name, SourceLocation BeginLoc,
+                            llvm::ArrayRef<IdentifierInfo*> Args,
+                            llvm::ArrayRef<Token> Body);
 
 public:
   NacroRuleExpander(NacroRule& Rule, Preprocessor& PP)
