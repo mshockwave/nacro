@@ -1,6 +1,5 @@
 enable_testing()
 find_package(GTest REQUIRED)
-include(GoogleTest)
 
 include_directories(${CMAKE_SOURCE_DIR})
 
@@ -11,4 +10,6 @@ target_link_libraries(NacroUnittests
                       GTest::GTest GTest::Main
                       Nacro)
 
-gtest_add_tests(NacroUnittests "" AUTO)
+add_custom_target(check-units
+  COMMAND ${CMAKE_CURRENT_BINARY_DIR}/NacroUnittests
+  DEPENDS NacroUnittests)
