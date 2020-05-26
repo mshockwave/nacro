@@ -51,7 +51,7 @@ add_llvm_library(NacroPlugin MODULE
                  ${_SOURCE_FILES}
                  PLUGIN_TOOL clang)
 
-#add_subdirectory(Playground)
+add_subdirectory(Playground)
 
 if(${NACRO_BUILD_LIB} OR ${NACRO_ENABLE_UNITTESTS})
   add_library(Nacro SHARED

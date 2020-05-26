@@ -3,6 +3,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/IntervalMap.h"
 #include "llvm/ADT/iterator_range.h"
 #include "clang/Lex/Preprocessor.h"
@@ -104,6 +105,25 @@ public:
     return Replacements.size();
   }
 
+  inline
+  Replacement& getReplacement(size_t i) {
+    assert(i < replacements_size());
+    return Replacements[i];
+  }
+
+  inline
+  const Replacement& getReplacement(size_t i) const {
+    assert(i < replacements_size());
+    return Replacements[i];
+  }
+
+  inline bool hasVAArgs() const {
+    return llvm::any_of(Replacements,
+                        [](const Replacement& R) -> bool {
+                          return R.VarArgs;
+                        });
+  }
+
   using token_iterator =
     typename decltype(Tokens)::iterator;
 
@@ -119,6 +139,11 @@ public:
 
   auto tokens() {
     return llvm::make_range(token_begin(), token_end());
+  }
+
+  inline
+  Token getToken(size_t i) const {
+    return Tokens[i];
   }
 
   token_iterator insert_token(token_iterator pos, const Token& tok) {
@@ -157,6 +182,13 @@ public:
     return !loop_begin().valid();
   }
 
+  loop_iterator FindLoop(size_t Idx) {
+    return Loops.find(Idx);
+  }
+
+  const_loop_iterator FindLoop(size_t Idx) const {
+    return Loops.find(Idx);
+  }
   /// Require installing PPCallbacks (e.g. loops)
   bool needsPPHooks() const;
 };

@@ -3,8 +3,11 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/STLExtras.h"
 #include "clang/Lex/MacroInfo.h"
+#include "clang/Lex/MacroArgs.h"
+#include "clang/Lex/PPCallbacks.h"
 #include "NacroExpanders.h"
 #include <iterator>
+#include <vector>
 
 using namespace clang;
 using llvm::ArrayRef;
@@ -84,8 +87,84 @@ Error NacroRuleExpander::ReplacementProtecting() {
   return Error::success();
 }
 
+namespace {
+struct LoopExpandingPPCallbacks : public PPCallbacks {
+  LoopExpandingPPCallbacks(NacroRule& Rule, Preprocessor& PP)
+    : Rule(Rule), PP(PP) {
+    assert(Rule.hasVAArgs() && "No loops to expand from arguments");
+  }
+
+  void ExpandsLoop(const NacroRule::Loop& LoopInfo,
+                   ArrayRef<Token> LoopBody,
+                   ArrayRef<std::vector<Token>> FormalArgs,
+                   SmallVectorImpl<Token>& OutputBuffer) {
+  }
+
+  void MacroExpands(const Token& MacroNameToken,
+                    const MacroDefinition& MD,
+                    SourceRange Range,
+                    const MacroArgs* ConstArgs) override {
+    // FIXME: Is this safe?
+    auto* Args = const_cast<MacroArgs*>(ConstArgs);
+    auto* MacroII = MacroNameToken.getIdentifierInfo();
+    assert(MacroII);
+    if(MacroII != Rule.getName()) return;
+    assert(Args->getNumMacroArguments() == Rule.replacements_size());
+
+    auto* MI = MD.getMacroInfo();
+    // If there is a VAArgs, it must be the last (formal) argument
+    auto VAArgsIdx = Rule.replacements_size() - 1;
+    auto& VAReplacement = Rule.getReplacement(VAArgsIdx);
+    const auto& RawExpVAArgs
+      = Args->getPreExpArgument(VAArgsIdx, PP);
+    SmallVector<std::vector<Token>, 4> ExpVAArgs;
+    for(int Start = 0, i = 0; i < RawExpVAArgs.size(); ++i) {
+      auto Tok = RawExpVAArgs[i];
+      if(Tok.isOneOf(tok::eof, tok::comma)) {
+        std::vector<Token> Buffer;
+        for(; Start < i; ++Start) {
+          Buffer.push_back(RawExpVAArgs[Start]);
+        }
+        ExpVAArgs.push_back(std::move(Buffer));
+        ++Start;
+      }
+    }
+
+    SmallVector<Token, 16> ExpTokens;
+    for(auto TokIdx = 0; TokIdx < Rule.token_size(); ++TokIdx) {
+      auto Tok = Rule.getToken(TokIdx);
+      if(Tok.is(tok::annot_pragma_loop_hint)) {
+        auto LPI = Rule.FindLoop(TokIdx);
+        assert(LPI != Rule.loop_end() &&
+               "Not in the loop map?");
+        assert(LPI.start() == TokIdx &&
+               "Not pointing to the first loop token?");
+        const auto& LP = LPI.value();
+        assert(VAReplacement.Identifier == LP.IterRange &&
+               "Iterating on non VAArgs variable");
+
+        // Extract loop body
+        SmallVector<Token, 8> LoopBody;
+        for(auto E = LPI.stop(); TokIdx <= E; ++TokIdx) {
+          Tok = Rule.getToken(TokIdx);
+          if(Tok.isNot(tok::annot_pragma_loop_hint)) {
+            LoopBody.push_back(Tok);
+          }
+        }
+        ExpandsLoop(LP, LoopBody, ExpVAArgs, ExpTokens);
+      } else {
+        ExpTokens.push_back(Tok);
+      }
+    }
+  }
+
+private:
+  NacroRule& Rule;
+  Preprocessor& PP;
+};
+} // end anonymous namespace
+
 Error NacroRuleExpander::LoopExpanding() {
-  // TODO
   return Error::success();
 }
 

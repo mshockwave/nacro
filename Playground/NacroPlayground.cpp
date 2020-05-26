@@ -9,6 +9,10 @@
 using namespace clang;
 
 struct ExamplePPCallbacks : public PPCallbacks {
+  Preprocessor& PP;
+
+  ExamplePPCallbacks(Preprocessor& PP) : PP(PP) {};
+
   void MacroExpands(const Token& MacroNameToken,
                     const MacroDefinition& MD,
                     SourceRange Range,
@@ -76,7 +80,7 @@ public:
     PP.appendDefMacroDirective(RuleII, NewMI);
 
     // Add custom PPCallbacks
-    auto PPC = std::make_unique<ExamplePPCallbacks>();
+    auto PPC = std::make_unique<ExamplePPCallbacks>(PP);
     PP.addPPCallbacks(std::move(PPC));
   }
 };
