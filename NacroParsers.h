@@ -37,9 +37,7 @@ class NacroRuleParser : public NacroParser {
   // Owner of this instance
   std::unique_ptr<NacroRule> CurrentRule;
 
-  /// All of the braces in a rule must match.
-  /// This stack is used to reduce pair of braces.
-  llvm::SmallVector<Token, 2> BraceStack;
+  Token CurTok;
 
 public:
   NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params);
@@ -49,12 +47,16 @@ public:
     return std::move(CurrentRule);
   }
 
+  inline void Advance() {
+    PP.Lex(CurTok);
+  }
+
   bool ParseArgList();
 
   bool ParseStmts();
 
   llvm::Optional<NacroRule::Loop> ParseLoopHeader();
-  bool ParseLoop(Token LoopTok);
+  bool ParseLoop();
 
   bool Parse() override;
 };

@@ -78,50 +78,42 @@ bool NacroRuleParser::ParseArgList() {
 }
 
 bool NacroRuleParser::ParseStmts() {
-  Token Tok;
-  PP.Lex(Tok);
-  if(Tok.isNot(tok::l_brace)) {
-    PP.Diag(Tok, diag::err_expected) << tok::l_brace;
+  if(CurTok.isNot(tok::l_brace)) {
+    PP.Diag(CurTok, diag::err_expected) << tok::l_brace;
     return false;
   }
-  CurrentRule->AddToken(Tok);
-  BraceStack.push_back(Tok);
+  CurrentRule->AddToken(CurTok);
 
-  while(!BraceStack.empty()) {
-    PP.Lex(Tok);
+  while(true) {
+    Advance();
+
     // Handle some special directives
-    if(Tok.is(tok::identifier)) {
-      auto* II = Tok.getIdentifierInfo();
+    if(CurTok.is(tok::identifier)) {
+      auto* II = CurTok.getIdentifierInfo();
       assert(II);
       if(II->isStr("$loop")) {
-        if(!ParseLoop(Tok)) return false;
+        if(!ParseLoop()) return false;
         continue;
       } else if(II->isStr("$str")) {
         // TODO
       }
     }
 
-    if(Tok.is(tok::eof)) {
-      PP.Diag(Tok, diag::err_expected)
+    if(CurTok.is(tok::eof)) {
+      PP.Diag(CurTok, diag::err_expected)
         << "'}'. Might be caused by mismatch braces";
       return false;
     }
 
-    if(Tok.is(tok::r_brace)) {
-      assert(!BraceStack.empty() &&
-             "BraceStack is empty");
-      auto TopTok = BraceStack.pop_back_val();
-      if(TopTok.isNot(tok::l_brace)) {
-        PP.Diag(TopTok, diag::err_expected)
-          << "'{'. Might be caused by mismatch braces";
-        return false;
-      }
+    if(CurTok.is(tok::l_brace)) {
+      if(!ParseStmts()) return false;
+      continue;
     }
 
-    CurrentRule->AddToken(Tok);
+    CurrentRule->AddToken(CurTok);
+    if(CurTok.is(tok::r_brace))
+      return true;
   }
-
-  return true;
 }
 
 Optional<NacroRule::Loop> NacroRuleParser::ParseLoopHeader() {
@@ -172,9 +164,9 @@ Optional<NacroRule::Loop> NacroRuleParser::ParseLoopHeader() {
   return NacroRule::Loop{IV, IterRange};
 }
 
-bool NacroRuleParser::ParseLoop(Token LoopTok) {
-  assert(LoopTok.is(tok::identifier));
-  auto* II = LoopTok.getIdentifierInfo();
+bool NacroRuleParser::ParseLoop() {
+  assert(CurTok.is(tok::identifier));
+  auto* II = CurTok.getIdentifierInfo();
   assert(II && II->isStr("$loop"));
 
   auto LH = ParseLoopHeader();
@@ -182,11 +174,12 @@ bool NacroRuleParser::ParseLoop(Token LoopTok) {
 
   // Use everything (especially the SrcLoc) from `$loop`
   // except the token kind
-  LoopTok.setKind(tok::annot_pragma_loop_hint);
-  CurrentRule->AddToken(LoopTok);
+  CurTok.setKind(tok::annot_pragma_loop_hint);
+  CurrentRule->AddToken(CurTok);
   auto LoopTokStartIdx = CurrentRule->token_size() - 1;
 
   // Parse the loop body
+  Advance();
   if(!ParseStmts()) return false;
 
   Token LoopEndTok;
@@ -223,5 +216,6 @@ bool NacroRuleParser::Parse() {
     return false;
   }
 
+  Advance();
   return ParseStmts();
 }

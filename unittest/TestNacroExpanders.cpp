@@ -29,9 +29,9 @@ TEST_F(NacroExpanderTest, TestRuleReplacementExprProtecting) {
   auto& PP = *RE.second;
 
   auto PrevTokenSize = Rule.token_size();
-  NacroRuleExpander Expander(Rule, PP);
+  NacroRuleExpander Expander(std::move(RE.first), PP);
   auto E = Expander.ReplacementProtecting();
   ASSERT_FALSE(E);
 
-  ASSERT_EQ(Rule.token_size(), PrevTokenSize + 4);
+  ASSERT_EQ(Expander.getNacroRule().token_size(), PrevTokenSize + 4);
 }

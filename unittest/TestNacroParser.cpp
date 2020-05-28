@@ -15,23 +15,27 @@ protected:
 };
 
 TEST_F(NacroParserTest, TestRuleParseArgList) {
-  auto PP = GetPP("a:$expr, b:$stmt)");
+  auto PP = GetPP("a:$expr, b:$stmt, c:$expr*)");
   NacroRuleParser Parser(*PP, {});
 
   ASSERT_TRUE(Parser.ParseArgList());
   auto& Rule = Parser.getNacroRule();
-  ASSERT_EQ(Rule.replacements_size(), 2);
+  ASSERT_EQ(Rule.replacements_size(), 3);
 
   auto RI = Rule.replacement_begin();
   ASSERT_EQ(RI->Type, NacroRule::ReplacementTy::Expr);
   ++RI;
   ASSERT_EQ(RI->Type, NacroRule::ReplacementTy::Stmt);
+  ++RI;
+  ASSERT_EQ(RI->Type, NacroRule::ReplacementTy::Expr);
+  ASSERT_TRUE(RI->VarArgs);
 }
 
 TEST_F(NacroParserTest, TestRuleSimpleStmts) {
   auto PP = GetPP("{if(1){ puts(\"hello\"); }}");
   NacroRuleParser Parser(*PP, {});
 
+  Parser.Advance();
   ASSERT_TRUE(Parser.ParseStmts());
   auto& Rule = Parser.getNacroRule();
   ASSERT_GT(Rule.token_size(), 2);
@@ -41,9 +45,8 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
   auto PP = GetPP("$loop($i in $iter){ puts($i); }");
   NacroRuleParser Parser(*PP, {});
 
-  Token LoopTok;
-  PP->Lex(LoopTok);
-  ASSERT_TRUE(Parser.ParseLoop(LoopTok));
+  Parser.Advance();
+  ASSERT_TRUE(Parser.ParseLoop());
 
   auto& Rule = Parser.getNacroRule();
   auto LI = Rule.loop_begin();

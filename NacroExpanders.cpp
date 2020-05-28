@@ -1,4 +1,5 @@
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/STLExtras.h"
@@ -12,33 +13,38 @@
 using namespace clang;
 using llvm::ArrayRef;
 using llvm::Error;
+using llvm::SmallVector;
+using llvm::Twine;
 
-void NacroRuleExpander::CreateMacroDirective(IdentifierInfo* Name,
-                                             SourceLocation BeginLoc,
-                                             ArrayRef<IdentifierInfo*> Args,
-                                             ArrayRef<Token> Body) {
+static
+DefMacroDirective* CreateMacroDirective(Preprocessor& PP, IdentifierInfo* Name,
+                                        SourceLocation BeginLoc,
+                                        ArrayRef<IdentifierInfo*> Args,
+                                        ArrayRef<Token> Body,
+                                        bool isVaradic = false) {
   auto* MI = PP.AllocateMacroInfo(BeginLoc);
   MI->setIsFunctionLike();
+  if(isVaradic) MI->setIsGNUVarargs();
 
   for(auto Tok : Body) {
     MI->AddTokenToBody(Tok);
   }
 
   MI->setParameterList(Args, PP.getPreprocessorAllocator());
-  PP.appendDefMacroDirective(Name, MI);
+  return PP.appendDefMacroDirective(Name, MI);
 }
 
 Error NacroRuleExpander::ReplacementProtecting() {
   using namespace llvm;
   DenseMap<IdentifierInfo*, typename NacroRule::Replacement> IdentMap;
-  for(auto& R : Rule.replacements()) {
+  for(auto& R : Rule->replacements()) {
     if(R.Identifier && !R.VarArgs) {
       IdentMap.insert({R.Identifier, R});
     }
   }
   if(IdentMap.empty()) return Error::success();
 
-  for(auto TI = Rule.token_begin(); TI != Rule.token_end();) {
+  for(auto TI = Rule->token_begin(); TI != Rule->token_end();) {
     auto Tok = *TI;
     auto TokLoc = Tok.getLocation();
     if(Tok.is(tok::identifier)) {
@@ -55,13 +61,13 @@ Error NacroRuleExpander::ReplacementProtecting() {
           RParen.setKind(tok::r_paren);
           RParen.setLength(1);
           RParen.setLocation(TokLoc.getLocWithOffset(1));
-          TI = Rule.insert_token(TI, RParen);
+          TI = Rule->insert_token(TI, RParen);
           --TI;
           LParen.startToken();
           LParen.setKind(tok::l_paren);
           LParen.setLength(1);
           LParen.setLocation(TokLoc.getLocWithOffset(-1));
-          TI = Rule.insert_token(TI, LParen);
+          TI = Rule->insert_token(TI, LParen);
           // skip expr and r_paren
           for(int i = 0; i < 3; ++i) ++TI;
           break;
@@ -73,7 +79,7 @@ Error NacroRuleExpander::ReplacementProtecting() {
           Semi.setKind(tok::semi);
           Semi.setLength(1);
           Semi.setLocation(TokLoc.getLocWithOffset(1));
-          TI = Rule.insert_token(TI, Semi);
+          TI = Rule->insert_token(TI, Semi);
           ++TI;
           break;
         }
@@ -89,15 +95,33 @@ Error NacroRuleExpander::ReplacementProtecting() {
 
 namespace {
 struct LoopExpandingPPCallbacks : public PPCallbacks {
-  LoopExpandingPPCallbacks(NacroRule& Rule, Preprocessor& PP)
-    : Rule(Rule), PP(PP) {
-    assert(Rule.hasVAArgs() && "No loops to expand from arguments");
+  LoopExpandingPPCallbacks(std::unique_ptr<NacroRule>&& R, Preprocessor& PP)
+    : Rule(std::move(R)), PP(PP) {
+    assert(Rule->hasVAArgs() && "No loops to expand from arguments");
+    llvm::transform(Rule->replacements(), std::back_inserter(UnexpArgsII),
+                    [](NacroRule::Replacement& R) {
+                      return R.Identifier;
+                    });
   }
 
   void ExpandsLoop(const NacroRule::Loop& LoopInfo,
                    ArrayRef<Token> LoopBody,
-                   ArrayRef<std::vector<Token>> FormalArgs,
+                   ArrayRef<std::vector<Token>> ExpVAArgs,
                    SmallVectorImpl<Token>& OutputBuffer) {
+    auto* IndVarII = LoopInfo.InductionVar;
+    for(const auto& Arg : ExpVAArgs) {
+      for(auto& Tok : LoopBody) {
+        if(Tok.is(tok::identifier) &&
+           Tok.getIdentifierInfo() == IndVarII) {
+          for(auto ArgTok : Arg) {
+            ArgTok.setLocation(Tok.getLocation());
+            OutputBuffer.push_back(ArgTok);
+          }
+        } else {
+          OutputBuffer.push_back(Tok);
+        }
+      }
+    }
   }
 
   void MacroExpands(const Token& MacroNameToken,
@@ -108,34 +132,34 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
     auto* Args = const_cast<MacroArgs*>(ConstArgs);
     auto* MacroII = MacroNameToken.getIdentifierInfo();
     assert(MacroII);
-    if(MacroII != Rule.getName()) return;
-    assert(Args->getNumMacroArguments() == Rule.replacements_size());
+    if(MacroII != Rule->getName()) return;
+    // Number of un-expanded arguments
+    assert(Args->getNumMacroArguments() == Rule->replacements_size());
 
-    auto* MI = MD.getMacroInfo();
     // If there is a VAArgs, it must be the last (formal) argument
-    auto VAArgsIdx = Rule.replacements_size() - 1;
-    auto& VAReplacement = Rule.getReplacement(VAArgsIdx);
+    auto VAArgsIdx = Rule->replacements_size() - 1;
+    auto& VAReplacement = Rule->getReplacement(VAArgsIdx);
+    assert(VAReplacement.VarArgs);
     const auto& RawExpVAArgs
       = Args->getPreExpArgument(VAArgsIdx, PP);
     SmallVector<std::vector<Token>, 4> ExpVAArgs;
-    for(int Start = 0, i = 0; i < RawExpVAArgs.size(); ++i) {
-      auto Tok = RawExpVAArgs[i];
-      if(Tok.isOneOf(tok::eof, tok::comma)) {
-        std::vector<Token> Buffer;
-        for(; Start < i; ++Start) {
-          Buffer.push_back(RawExpVAArgs[Start]);
-        }
-        ExpVAArgs.push_back(std::move(Buffer));
-        ++Start;
+    std::vector<Token> VABuffer;
+    for(const auto& Tok : RawExpVAArgs) {
+      if(!Tok.isOneOf(tok::eof, tok::comma)) {
+        VABuffer.push_back(Tok);
+      } else {
+        ExpVAArgs.push_back(VABuffer);
+        VABuffer.clear();
       }
     }
 
+    // Create a new MacroInfo for this iteration number
     SmallVector<Token, 16> ExpTokens;
-    for(auto TokIdx = 0; TokIdx < Rule.token_size(); ++TokIdx) {
-      auto Tok = Rule.getToken(TokIdx);
+    for(auto TokIdx = 0; TokIdx < Rule->token_size();) {
+      auto Tok = Rule->getToken(TokIdx);
       if(Tok.is(tok::annot_pragma_loop_hint)) {
-        auto LPI = Rule.FindLoop(TokIdx);
-        assert(LPI != Rule.loop_end() &&
+        auto LPI = Rule->FindLoop(TokIdx);
+        assert(LPI != Rule->loop_end() &&
                "Not in the loop map?");
         assert(LPI.start() == TokIdx &&
                "Not pointing to the first loop token?");
@@ -146,7 +170,7 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
         // Extract loop body
         SmallVector<Token, 8> LoopBody;
         for(auto E = LPI.stop(); TokIdx <= E; ++TokIdx) {
-          Tok = Rule.getToken(TokIdx);
+          Tok = Rule->getToken(TokIdx);
           if(Tok.isNot(tok::annot_pragma_loop_hint)) {
             LoopBody.push_back(Tok);
           }
@@ -154,35 +178,52 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
         ExpandsLoop(LP, LoopBody, ExpVAArgs, ExpTokens);
       } else {
         ExpTokens.push_back(Tok);
+        ++TokIdx;
       }
     }
+
+    auto* MI = MD.getMacroInfo();
+    llvm::for_each(ExpTokens, [&MI](const Token& Tok) {
+                    MI->AddTokenToBody(Tok);
+                   });
+
+    // Create an empty macro for next expansion
+    CreateMacroDirective(PP, MacroII,
+                         Rule->getBeginLoc(),
+                         UnexpArgsII, {}, true);
   }
 
 private:
-  NacroRule& Rule;
+  std::unique_ptr<NacroRule> Rule;
   Preprocessor& PP;
+  SmallVector<IdentifierInfo*, 4> UnexpArgsII;
 };
 } // end anonymous namespace
 
-Error NacroRuleExpander::LoopExpanding() {
-  return Error::success();
-}
-
 Error NacroRuleExpander::Expand() {
-  if(auto E = ReplacementProtecting())
-    return E;
+  //if(auto E = ReplacementProtecting())
+    //return E;
 
-  if(!Rule.needsPPHooks()) {
+  SmallVector<IdentifierInfo*, 2> ReplacementsII;
+  llvm::transform(Rule->replacements(), std::back_inserter(ReplacementsII),
+                  [](NacroRule::Replacement& R) {
+                    return R.Identifier;
+                  });
+  if(!Rule->needsPPHooks()) {
     // export as a normal macro function
-    llvm::SmallVector<IdentifierInfo*, 2> ReplacementsII;
-    llvm::transform(Rule.replacements(), std::back_inserter(ReplacementsII),
-                    [](NacroRule::Replacement& R) { return R.Identifier; });
-    CreateMacroDirective(Rule.getName(), Rule.getBeginLoc(),
+    CreateMacroDirective(PP, Rule->getName(), Rule->getBeginLoc(),
                          ReplacementsII,
-                         ArrayRef<Token>(Rule.token_begin(), Rule.token_end()));
-  } else if(!Rule.loop_empty()) {
-    if(auto E = LoopExpanding())
-      return E;
+                         ArrayRef<Token>(Rule->token_begin(),
+                                         Rule->token_end()));
   }
+
+  if(!Rule->loop_empty()) {
+    // Create a placeholder macro first
+    CreateMacroDirective(PP, Rule->getName(), Rule->getBeginLoc(),
+                         ReplacementsII, {}, true);
+    PP.addPPCallbacks(
+      std::make_unique<LoopExpandingPPCallbacks>(std::move(Rule), PP));
+  }
+
   return Error::success();
 }

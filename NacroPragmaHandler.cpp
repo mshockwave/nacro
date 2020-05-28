@@ -47,7 +47,7 @@ void NacroPragmaHandler::HandlePragma(Preprocessor &PP,
     if(!Parser.Parse()) return;
     auto Rule = Parser.releaseNacroRule();
 
-    NacroRuleExpander Expander(*Rule, PP);
+    NacroRuleExpander Expander(std::move(Rule), PP);
     if(Expander.Expand()) return;
   } else {
     llvm::errs() << "Unrecognized category: "
