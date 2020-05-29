@@ -50,16 +50,13 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
 
   auto& Rule = Parser.getNacroRule();
   auto LI = Rule.loop_begin();
-  ASSERT_TRUE(LI.valid());
 
-  auto* IV = LI.value().InductionVar;
+  auto* IV = LI->InductionVar;
   ASSERT_TRUE(IV && IV->isStr("$i"));
 
-  auto* IR = LI.value().IterRange;
+  auto* IR = LI->IterRange;
   ASSERT_TRUE(IR && IR->isStr("$iter"));
 
   ++LI;
-  // Since getting size from an IntervalMap iterator is expensive
-  // this is the easiest way to check size
-  ASSERT_FALSE(LI.valid());
+  ASSERT_EQ(LI, Rule.loop_end());
 }

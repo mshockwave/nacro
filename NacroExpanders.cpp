@@ -155,30 +155,26 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
 
     // Create a new MacroInfo for this iteration number
     SmallVector<Token, 16> ExpTokens;
-    for(auto TokIdx = 0; TokIdx < Rule->token_size();) {
+    auto LPI = Rule->loop_begin();
+    for(auto TokIdx = 0; TokIdx < Rule->token_size(); ++TokIdx) {
       auto Tok = Rule->getToken(TokIdx);
       if(Tok.is(tok::annot_pragma_loop_hint)) {
-        auto LPI = Rule->FindLoop(TokIdx);
         assert(LPI != Rule->loop_end() &&
-               "Not in the loop map?");
-        assert(LPI.start() == TokIdx &&
-               "Not pointing to the first loop token?");
-        const auto& LP = LPI.value();
+               "No loop in this rule or loop out-of-bound?");
+        const auto& LP = *(LPI++);
         assert(VAReplacement.Identifier == LP.IterRange &&
                "Iterating on non VAArgs variable");
 
         // Extract loop body
         SmallVector<Token, 8> LoopBody;
-        for(auto E = LPI.stop(); TokIdx <= E; ++TokIdx) {
-          Tok = Rule->getToken(TokIdx);
-          if(Tok.isNot(tok::annot_pragma_loop_hint)) {
-            LoopBody.push_back(Tok);
-          }
+        Tok = Rule->getToken(++TokIdx);
+        while(Tok.isNot(tok::annot_pragma_loop_hint)) {
+          LoopBody.push_back(Tok);
+          Tok = Rule->getToken(++TokIdx);
         }
         ExpandsLoop(LP, LoopBody, ExpVAArgs, ExpTokens);
       } else {
         ExpTokens.push_back(Tok);
-        ++TokIdx;
       }
     }
 
@@ -201,8 +197,8 @@ private:
 } // end anonymous namespace
 
 Error NacroRuleExpander::Expand() {
-  //if(auto E = ReplacementProtecting())
-    //return E;
+  if(auto E = ReplacementProtecting())
+    return E;
 
   SmallVector<IdentifierInfo*, 2> ReplacementsII;
   llvm::transform(Rule->replacements(), std::back_inserter(ReplacementsII),

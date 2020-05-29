@@ -176,7 +176,6 @@ bool NacroRuleParser::ParseLoop() {
   // except the token kind
   CurTok.setKind(tok::annot_pragma_loop_hint);
   CurrentRule->AddToken(CurTok);
-  auto LoopTokStartIdx = CurrentRule->token_size() - 1;
 
   // Parse the loop body
   Advance();
@@ -186,9 +185,8 @@ bool NacroRuleParser::ParseLoop() {
   LoopEndTok.startToken();
   LoopEndTok.setKind(tok::annot_pragma_loop_hint);
   CurrentRule->AddToken(LoopEndTok);
-  auto LoopTokEndIdx = CurrentRule->token_size() - 1;
 
-  CurrentRule->AddLoop(LoopTokStartIdx, LoopTokEndIdx, *LH);
+  CurrentRule->AddLoop(*LH);
 
   return true;
 }

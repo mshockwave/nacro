@@ -73,17 +73,11 @@ private:
   /// tok::annot_pragma_loop_hint
   llvm::SmallVector<Token, 16> Tokens;
 
-  using LoopIntervalsTy = llvm::IntervalMap<size_t, Loop>;
-  // FIXME: Do we need to hoist allocator to the upper level?
-  // i.e. shared a single allocator among rules
-  LoopIntervalsTy::Allocator LoopIntervalAlloc;
-  LoopIntervalsTy Loops;
+  llvm::SmallVector<Loop, 2> Loops;
 
 public:
   NacroRule(IdentifierInfo* NameII)
-    : Name(NameII), BeginLoc(),
-      LoopIntervalAlloc(),
-      Loops(LoopIntervalAlloc) {}
+    : Name(NameII), BeginLoc() {}
 
   using repl_iterator
     = typename decltype(Replacements)::iterator;
@@ -143,6 +137,7 @@ public:
 
   inline
   Token getToken(size_t i) const {
+    assert(i < Tokens.size());
     return Tokens[i];
   }
 
@@ -154,9 +149,8 @@ public:
     return Tokens.erase(pos);
   }
 
-  void AddLoop(size_t StartIdx, size_t EndIdx,
-               const Loop& LP) {
-    Loops.insert(StartIdx, EndIdx, LP);
+  inline void AddLoop(const Loop& LP) {
+    Loops.push_back(LP);
   }
 
   using loop_iterator
@@ -179,16 +173,18 @@ public:
   }
 
   bool loop_empty() const {
-    return !loop_begin().valid();
+    return Loops.empty();
   }
 
-  loop_iterator FindLoop(size_t Idx) {
-    return Loops.find(Idx);
+  inline
+  Loop& getLoop(size_t Idx) {
+    return Loops[Idx];
+  }
+  inline
+  const Loop& getLoop(size_t Idx) const {
+    return Loops[Idx];
   }
 
-  const_loop_iterator FindLoop(size_t Idx) const {
-    return Loops.find(Idx);
-  }
   /// Require installing PPCallbacks (e.g. loops)
   bool needsPPHooks() const;
 };
