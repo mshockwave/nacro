@@ -1,4 +1,5 @@
 #include "clang/AST/ASTConsumer.h"
+#include "clang/AST/Expr.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -11,9 +12,10 @@ class FindNamedClassVisitor
   : public RecursiveASTVisitor<FindNamedClassVisitor> {
 public:
   explicit FindNamedClassVisitor(ASTContext *Context)
-    : Context(Context) {}
+    : Ctx(Context) {}
 
   bool VisitCXXRecordDecl(CXXRecordDecl *Declaration) {
+#if 0
     if (Declaration->getQualifiedNameAsString() == "n::m::C") {
       FullSourceLoc FullLocation = Context->getFullLoc(Declaration->getBeginLoc());
       if (FullLocation.isValid())
@@ -21,11 +23,32 @@ public:
                      << FullLocation.getSpellingLineNumber() << ":"
                      << FullLocation.getSpellingColumnNumber() << "\n";
     }
+#endif
+    return true;
+  }
+
+  template<class T>
+  void printLocation(T* Obj) {
+    auto& SM = Ctx->getSourceManager();
+    auto Loc = Obj->getLocation();
+    llvm::errs() << "#Loc: "
+                 << Loc.printToString(SM) << "\n";
+    Loc = Obj->getBeginLoc();
+    auto ELoc = Obj->getEndLoc();
+    llvm::errs() << "#Begin/End: "
+                 << Loc.printToString(SM) << " / "
+                 << ELoc.printToString(SM) << "\n\n";
+  }
+
+  bool VisitDeclRefExpr(DeclRefExpr* Ref) {
+    llvm::errs() << "In DeclRefExpr...\n";
+    printLocation<DeclRefExpr>(Ref);
+    printLocation<Decl>(Ref->getDecl());
     return true;
   }
 
 private:
-  ASTContext *Context;
+  ASTContext *Ctx;
 };
 
 class FindNamedClassConsumer : public clang::ASTConsumer {
@@ -43,7 +66,6 @@ private:
 struct FindNamedClassAction : public clang::PluginASTAction {
   std::unique_ptr<clang::ASTConsumer> CreateASTConsumer(
     clang::CompilerInstance &Compiler, llvm::StringRef InFile) override {
-    llvm::errs() << "In CreateASTConsumer...\n";
     return std::unique_ptr<clang::ASTConsumer>(
         new FindNamedClassConsumer(&Compiler.getASTContext()));
   }

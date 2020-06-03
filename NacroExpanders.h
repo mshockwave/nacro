@@ -1,3 +1,5 @@
+#ifndef NACRO_NACRO_EXPANDERS_H
+#define NACRO_NACRO_EXPANDERS_H
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/Support/Error.h"
 #include "clang/Lex/Preprocessor.h"
@@ -29,3 +31,4 @@ public:
   }
 };
 } // end namespace clang
+#endif

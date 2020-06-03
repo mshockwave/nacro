@@ -59,6 +59,7 @@ if(${NACRO_BUILD_LIB} OR ${NACRO_ENABLE_UNITTESTS})
   target_link_libraries(Nacro
                         clangBasic
                         clangLex
+                        clangFrontend
                         clangAST)
 endif()
 

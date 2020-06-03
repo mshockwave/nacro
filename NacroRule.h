@@ -1,5 +1,5 @@
-#ifndef NACRO_NACRORULE_H
-#define NACRO_NACRORULE_H
+#ifndef NACRO_NACRO_RULE_H
+#define NACRO_NACRO_RULE_H
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ADT/SmallVector.h"
