@@ -4,9 +4,17 @@
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
 #include "clang/Frontend/FrontendPluginRegistry.h"
+#include "llvm/Support/raw_ostream.h"
 #include "NacroVerifier.h"
+#include <vector>
 
 using namespace clang;
+
+static std::vector<std::unique_ptr<NacroRule>> NacroRules;
+
+void NacroVerifier::AddNacroRule(std::unique_ptr<NacroRule>&& Rule) {
+  NacroRules.emplace_back(std::move(Rule));
+}
 
 namespace {
 /// Try to warn the following use case
@@ -22,10 +30,24 @@ namespace {
 struct NacroDeclRefChecker
   : public RecursiveASTVisitor<NacroDeclRefChecker> {
   explicit NacroDeclRefChecker(ASTContext& Context)
-    : Ctx(Context) {}
+    : Ctx(Context),
+      SM(Ctx.getSourceManager()) {}
+
+  bool VisitDeclRefExpr(DeclRefExpr* DRE) {
+    auto DRELoc = SM.getSpellingLoc(DRE->getLocation());
+    auto* D = DRE->getDecl();
+    auto DLoc = SM.getSpellingLoc(D->getLocation());
+    // TODO: Throw a warming if one of DRELoc or DLoc is in
+    // a nacro but the other is not
+    (void)DRELoc;
+    (void)DLoc;
+    llvm::errs() << NacroRules.size() << "\n";
+    return true;
+  }
 
 private:
   ASTContext& Ctx;
+  SourceManager& SM;
 };
 
 struct NacroVerifierImpl : public ASTConsumer {
@@ -33,7 +55,7 @@ struct NacroVerifierImpl : public ASTConsumer {
     : DeclRefChecker(Ctx) {}
 
   void HandleTranslationUnit(ASTContext& Ctx) override {
-    // TODO
+    DeclRefChecker.TraverseAST(Ctx);
   }
 
 private:
@@ -59,5 +81,5 @@ struct NacroVerifierImplAction : public PluginASTAction {
 } // end anonymous namespace
 
 static
-FrontendPluginRegistry::Add<NacroVerifierImplAction> X("nacro-verifier",
-                                                       "Nacro verifier driver");
+FrontendPluginRegistry::Add<NacroVerifierImplAction>
+  X("nacro-verifier", "Nacro verifier driver");

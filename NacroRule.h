@@ -53,18 +53,22 @@ struct NacroRule {
   /// null if name is not set
   IdentifierInfo* getName() const { return Name; }
 
-  void setBeginLoc(SourceLocation Loc) {
-    BeginLoc = Loc;
+  void setSourceRange(SourceRange SR) {
+    SrcRange = SR;
   }
 
-  SourceLocation getBeginLoc() const { return BeginLoc; }
+  SourceLocation getBeginLoc() const { return SrcRange.getBegin(); }
+
+  SourceRange getSourceRange() const {
+    return SrcRange;
+  }
 
 private:
   IdentifierInfo* Name;
 
-  /// Location to the beginning of the rule
-  /// (not the beginning of the pragma)
-  SourceLocation BeginLoc;
+  /// Range of this rule (starts from the head of rule
+  /// rather than pragma)
+  SourceRange SrcRange;
 
   /// a.k.a Macro rule arguments
   llvm::SmallVector<Replacement, 2> Replacements;
@@ -77,7 +81,7 @@ private:
 
 public:
   NacroRule(IdentifierInfo* NameII)
-    : Name(NameII), BeginLoc() {}
+    : Name(NameII), SrcRange() {}
 
   using repl_iterator
     = typename decltype(Replacements)::iterator;
@@ -127,6 +131,14 @@ public:
 
   token_iterator token_end() {
     return Tokens.end();
+  }
+
+  Token token_front() const {
+    return Tokens.front();
+  }
+
+  Token token_back() const {
+    return Tokens.back();
   }
 
   size_t token_size() const { return Tokens.size(); }

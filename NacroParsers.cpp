@@ -204,7 +204,7 @@ bool NacroRuleParser::Parse() {
     return false;
   }
 
-  CurrentRule->setBeginLoc(Tok.getLocation());
+  auto BeginLoc = Tok.getLocation();
 
   if(!ParseArgList()) return false;
 
@@ -215,5 +215,12 @@ bool NacroRuleParser::Parse() {
   }
 
   Advance();
-  return ParseStmts();
+  auto Res = ParseStmts();
+  if(Res) {
+    auto LastTok = CurrentRule->token_back();
+    auto EndLoc = LastTok.getEndLoc();
+    CurrentRule->setSourceRange(SourceRange(BeginLoc, EndLoc));
+  }
+
+  return Res;
 }

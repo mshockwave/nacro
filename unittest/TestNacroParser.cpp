@@ -60,3 +60,25 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
   ++LI;
   ASSERT_EQ(LI, Rule.loop_end());
 }
+
+TEST_F(NacroParserTest, TestRuleSourceLocation) {
+  auto PP = GetPP("(a:$expr, b:$expr) -> {\n"
+                  "  puts(a);\n"
+                  "  return b + 97;\n"
+                  "}");
+  auto& SM = PP->getSourceManager();
+  NacroRuleParser Parser(*PP, {});
+  ASSERT_TRUE(Parser.Parse());
+
+  auto& Rule = Parser.getNacroRule();
+  auto SR = Rule.getSourceRange();
+  auto B = SR.getBegin();
+  auto E = SR.getEnd();
+
+  auto BL = SM.getSpellingLineNumber(B),
+       EL = SM.getSpellingLineNumber(E);
+  ASSERT_EQ(EL - BL, 3);
+  // Ending can't be the last token - needs to be
+  // one token over the last one
+  ASSERT_GT(SM.getSpellingColumnNumber(E), 1);
+}
