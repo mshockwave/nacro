@@ -1,3 +1,4 @@
+#include "llvm/ADT/STLExtras.h"
 #include "NacroParsers.h"
 #include "LexingTestFixture.h"
 
@@ -81,4 +82,19 @@ TEST_F(NacroParserTest, TestRuleSourceLocation) {
   // Ending can't be the last token - needs to be
   // one token over the last one
   ASSERT_GT(SM.getSpellingColumnNumber(E), 1);
+}
+
+TEST_F(NacroParserTest, TestRuleStringify) {
+  auto PP = GetPP("(a:$ident) -> { printf(\"%s\\n\", $str(a)); }");
+  NacroRuleParser Parser(*PP, {});
+  ASSERT_TRUE(Parser.Parse());
+
+  auto& Rule = *Parser.getNacroRule();
+  ASSERT_TRUE(llvm::none_of(Rule.tokens(),
+                            [](Token Tok) {
+                              return Tok.is(tok::identifier) &&
+                                     Tok.getIdentifierInfo()->isStr("$str");
+                            }));
+  ASSERT_TRUE(llvm::any_of(Rule.tokens(),
+                           [](Token Tok) { return Tok.is(tok::hash); }));
 }

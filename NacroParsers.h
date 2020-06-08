@@ -52,6 +52,8 @@ public:
 
   bool ParseStmts();
 
+  bool ParseStr();
+
   llvm::Optional<NacroRule::Loop> ParseLoopHeader();
   bool ParseLoop();
 

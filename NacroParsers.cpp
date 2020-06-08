@@ -95,7 +95,8 @@ bool NacroRuleParser::ParseStmts() {
         if(!ParseLoop()) return false;
         continue;
       } else if(II->isStr("$str")) {
-        // TODO
+        if(!ParseStr()) return false;
+        continue;
       }
     }
 
@@ -114,6 +115,35 @@ bool NacroRuleParser::ParseStmts() {
     if(CurTok.is(tok::r_brace))
       return true;
   }
+}
+
+bool NacroRuleParser::ParseStr() {
+  assert(CurTok.is(tok::identifier));
+  assert(CurTok.getIdentifierInfo() &&
+         CurTok.getIdentifierInfo()->isStr("$str"));
+
+  PP.Lex(CurTok);
+  if(CurTok.isNot(tok::l_paren)) {
+    PP.Diag(CurTok, diag::err_expected) << tok::l_paren;
+    return false;
+  }
+  // We need their Location info
+  Token LParenTok = CurTok;
+
+  PP.Lex(CurTok);
+  Token StrTok = CurTok;
+
+  PP.Lex(CurTok);
+  if(CurTok.isNot(tok::r_paren)) {
+    PP.Diag(CurTok, diag::err_expected) << tok::r_paren;
+    return false;
+  }
+
+  LParenTok.setKind(tok::hash);
+  CurrentRule->AddToken(LParenTok);
+  CurrentRule->AddToken(StrTok);
+
+  return true;
 }
 
 Optional<NacroRule::Loop> NacroRuleParser::ParseLoopHeader() {

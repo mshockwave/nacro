@@ -140,7 +140,6 @@ struct NacroDeclRefChecker
       Diag.Report(DRE->getLocation(), RefNoteDiagID)
         << DRE->getNameInfo().getName().getAsString();
       Diag.Report(DLoc, DeclNoteDiagID);
-      return false;
     }
     return true;
   }
