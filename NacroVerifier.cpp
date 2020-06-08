@@ -1,5 +1,6 @@
 #include "clang/AST/ASTConsumer.h"
 #include "clang/AST/Expr.h"
+#include "clang/Basic/Diagnostic.h"
 #include "clang/AST/RecursiveASTVisitor.h"
 #include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/FrontendAction.h"
@@ -109,7 +110,17 @@ struct NacroDeclRefChecker
   : public RecursiveASTVisitor<NacroDeclRefChecker> {
   explicit NacroDeclRefChecker(ASTContext& Context)
     : Ctx(Context),
-      SM(Ctx.getSourceManager()) {}
+      SM(Ctx.getSourceManager()),
+      Diag(Ctx.getDiagnostics()) {
+    ErrDiagID = Diag.getCustomDiagID(DiagnosticsEngine::Error,
+                                     "a potential declaration leak detected");
+    RefNoteDiagID = Diag.getCustomDiagID(DiagnosticsEngine::Note,
+                                         "the reference to '%0' "
+                                         "that comes from outside a nacro");
+    DeclNoteDiagID = Diag.getCustomDiagID(DiagnosticsEngine::Note,
+                                          "is bind to declaration "
+                                          "within a nacro");
+  }
 
   bool VisitDeclRefExpr(DeclRefExpr* DRE) {
     if(!NacroRules) return true;
@@ -119,13 +130,17 @@ struct NacroDeclRefChecker
     auto* D = DRE->getDecl();
     auto DLoc
       = FullSourceLoc(SM.getSpellingLoc(D->getLocation()), SM);
-    // Throw a warming if one of DRELoc or DLoc is in
+    // Throw an error if one of DRELoc or DLoc is in
     // a nacro but the other is not
     auto* RefR = NacroRules.Intervals.lookup(DRELoc);
     auto* DeclR = NacroRules.Intervals.lookup(DLoc);
     if(RefR != DeclR &&
        DeclR != nullptr) {
-      llvm::errs() << "Warning: A potential declaration leaking happens\n";
+      Diag.Report(DRE->getLocation(), ErrDiagID);
+      Diag.Report(DRE->getLocation(), RefNoteDiagID)
+        << DRE->getNameInfo().getName().getAsString();
+      Diag.Report(DLoc, DeclNoteDiagID);
+      return false;
     }
     return true;
   }
@@ -133,6 +148,11 @@ struct NacroDeclRefChecker
 private:
   ASTContext& Ctx;
   SourceManager& SM;
+  DiagnosticsEngine& Diag;
+
+  unsigned ErrDiagID;
+  unsigned RefNoteDiagID,
+           DeclNoteDiagID;
 };
 
 struct NacroVerifierImpl : public ASTConsumer {
