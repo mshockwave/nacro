@@ -46,14 +46,14 @@ void NacroPragmaHandler::HandlePragma(Preprocessor &PP,
   if(Category == "rule") {
     NacroRuleParser Parser(PP, PragmaArgs);
     if(!Parser.Parse()) return;
-    auto Rule = Parser.releaseNacroRule();
+    auto* Rule = Parser.getNacroRule();
 
-    NacroRuleExpander Expander(std::move(Rule), PP);
+    NacroRuleExpander Expander(Rule, PP);
     if(Expander.Expand()) return;
 
     // FIXME: Make AddNacroRule completely static
     NacroVerifier(PP.getSourceManager())
-      .AddNacroRule(Expander.releaseNacroRule());
+      .AddNacroRule(Expander.getNacroRule());
   } else {
     llvm::errs() << "Unrecognized category: "
                  << Category << "\n";

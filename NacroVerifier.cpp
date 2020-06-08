@@ -67,8 +67,6 @@ struct IntervalMapHalfOpenInfo<FullSourceLoc> {
 
 namespace {
 struct NacroRuleDepot {
-  std::vector<std::unique_ptr<NacroRule>> Owner;
-
   using IntervalTy
     = llvm::IntervalMap<FullSourceLoc, NacroRule*,
           llvm::IntervalMapImpl::NodeSizer<FullSourceLoc, NacroRule*>::LeafSize,
@@ -77,23 +75,19 @@ struct NacroRuleDepot {
   IntervalTy Intervals;
 
   NacroRuleDepot()
-    : Owner(),
-      Allocator(),
+    : Allocator(),
       Intervals(Allocator) {}
 
   inline
   operator bool() const {
-    return !Owner.empty();
+    return !Intervals.empty();
   }
 };
 } // end anonymous namespace
 
 static NacroRuleDepot NacroRules;
 
-void NacroVerifier::AddNacroRule(std::unique_ptr<NacroRule>&& R) {
-  NacroRules.Owner.emplace_back(std::move(R));
-  auto* Rule = NacroRules.Owner.back().get();
-
+void NacroVerifier::AddNacroRule(NacroRule* Rule) {
   auto SR = Rule->getSourceRange();
   auto B = SR.getBegin(), E = SR.getEnd();
   NacroRules.Intervals.insert(FullSourceLoc(B, SM), FullSourceLoc(E, SM),

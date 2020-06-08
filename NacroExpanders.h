@@ -11,28 +11,21 @@ namespace clang {
 /// paran for expressions for example. As well as instantiating
 /// loops.
 class NacroRuleExpander {
-  // Now it owns the Rule
-  std::unique_ptr<NacroRule> Rule;
+  NacroRule* Rule;
 
   Preprocessor& PP;
 
 public:
-  NacroRuleExpander(std::unique_ptr<NacroRule>&& Rule,
-                    Preprocessor& PP)
-    : Rule(std::move(Rule)),
+  NacroRuleExpander(NacroRule* Rule, Preprocessor& PP)
+    : Rule(Rule),
       PP(PP) {}
 
   llvm::Error ReplacementProtecting();
 
   llvm::Error Expand();
 
-  inline NacroRule& getNacroRule() {
-    return *Rule;
-  }
-
-  inline
-  std::unique_ptr<NacroRule> releaseNacroRule() {
-    return std::move(Rule);
+  inline NacroRule* getNacroRule() {
+    return Rule;
   }
 };
 } // end namespace clang

@@ -1,12 +1,20 @@
 #include "llvm/ADT/StringSwitch.h"
 #include "clang/Basic/IdentifierTable.h"
-
 #include "NacroRule.h"
+#include <memory>
+#include <vector>
 
 using namespace clang;
 
 using llvm::StringRef;
 using llvm::ArrayRef;
+
+static std::vector<std::unique_ptr<NacroRule>> NacroRulesOwner;
+
+NacroRule* NacroRule::Create(IdentifierInfo* NameII) {
+  NacroRulesOwner.emplace_back(new NacroRule(NameII));
+  return NacroRulesOwner.back().get();
+}
 
 NacroRule::ReplacementTy NacroRule::GetReplacementTy(StringRef RawType) {
   return llvm::StringSwitch<ReplacementTy>(RawType)

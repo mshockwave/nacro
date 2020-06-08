@@ -79,9 +79,11 @@ private:
 
   llvm::SmallVector<Loop, 2> Loops;
 
-public:
   NacroRule(IdentifierInfo* NameII)
     : Name(NameII), SrcRange() {}
+
+public:
+  static NacroRule* Create(IdentifierInfo* NameII);
 
   using repl_iterator
     = typename decltype(Replacements)::iterator;

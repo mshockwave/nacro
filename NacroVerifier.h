@@ -12,7 +12,7 @@ struct NacroVerifier {
   NacroVerifier(SourceManager& SM)
     : SM(SM) {}
 
-  void AddNacroRule(std::unique_ptr<NacroRule>&& Rule);
+  void AddNacroRule(NacroRule* Rule);
 
 private:
   SourceManager& SM;

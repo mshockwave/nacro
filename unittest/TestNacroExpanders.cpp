@@ -10,7 +10,7 @@ class NacroExpanderTest : public NacroLexingTest {
 protected:
   NacroExpanderTest() = default;
 
-  std::pair<std::unique_ptr<NacroRule>, std::unique_ptr<Preprocessor>>
+  std::pair<NacroRule*, std::unique_ptr<Preprocessor>>
   GetRuleEssential(StringRef Source) {
     TrivialModuleLoader ModLoader;
     auto PP = CreatePP(Source, ModLoader);
@@ -18,7 +18,7 @@ protected:
     // Assume parser is correct...
     Parser.Parse();
 
-    return std::make_pair(std::move(Parser.releaseNacroRule()),
+    return std::make_pair(Parser.getNacroRule(),
                           std::move(PP));
   }
 };
@@ -33,5 +33,5 @@ TEST_F(NacroExpanderTest, TestRuleReplacementExprProtecting) {
   auto E = Expander.ReplacementProtecting();
   ASSERT_FALSE(E);
 
-  ASSERT_EQ(Expander.getNacroRule().token_size(), PrevTokenSize + 4);
+  ASSERT_EQ(Expander.getNacroRule()->token_size(), PrevTokenSize + 4);
 }

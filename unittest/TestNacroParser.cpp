@@ -19,7 +19,7 @@ TEST_F(NacroParserTest, TestRuleParseArgList) {
   NacroRuleParser Parser(*PP, {});
 
   ASSERT_TRUE(Parser.ParseArgList());
-  auto& Rule = Parser.getNacroRule();
+  auto& Rule = *Parser.getNacroRule();
   ASSERT_EQ(Rule.replacements_size(), 3);
 
   auto RI = Rule.replacement_begin();
@@ -37,7 +37,7 @@ TEST_F(NacroParserTest, TestRuleSimpleStmts) {
 
   Parser.Advance();
   ASSERT_TRUE(Parser.ParseStmts());
-  auto& Rule = Parser.getNacroRule();
+  auto& Rule = *Parser.getNacroRule();
   ASSERT_GT(Rule.token_size(), 2);
 }
 
@@ -48,7 +48,7 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
   Parser.Advance();
   ASSERT_TRUE(Parser.ParseLoop());
 
-  auto& Rule = Parser.getNacroRule();
+  auto& Rule = *Parser.getNacroRule();
   auto LI = Rule.loop_begin();
 
   auto* IV = LI->InductionVar;
@@ -70,7 +70,7 @@ TEST_F(NacroParserTest, TestRuleSourceLocation) {
   NacroRuleParser Parser(*PP, {});
   ASSERT_TRUE(Parser.Parse());
 
-  auto& Rule = Parser.getNacroRule();
+  auto& Rule = *Parser.getNacroRule();
   auto SR = Rule.getSourceRange();
   auto B = SR.getBegin();
   auto E = SR.getEnd();

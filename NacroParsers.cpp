@@ -22,7 +22,7 @@ NacroRuleParser::NacroRuleParser(Preprocessor& PP, ArrayRef<Token> Params)
       assert(NameII);
     }
   }
-  CurrentRule = std::make_unique<NacroRule>(NameII);
+  CurrentRule = NacroRule::Create(NameII);
 }
 
 bool NacroRuleParser::ParseArgList() {

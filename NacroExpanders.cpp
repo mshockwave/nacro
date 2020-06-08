@@ -95,8 +95,8 @@ Error NacroRuleExpander::ReplacementProtecting() {
 
 namespace {
 struct LoopExpandingPPCallbacks : public PPCallbacks {
-  LoopExpandingPPCallbacks(std::unique_ptr<NacroRule>&& R, Preprocessor& PP)
-    : Rule(std::move(R)), PP(PP) {
+  LoopExpandingPPCallbacks(NacroRule* R, Preprocessor& PP)
+    : Rule(R), PP(PP) {
     assert(Rule->hasVAArgs() && "No loops to expand from arguments");
     llvm::transform(Rule->replacements(), std::back_inserter(UnexpArgsII),
                     [](NacroRule::Replacement& R) {
@@ -190,7 +190,7 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
   }
 
 private:
-  std::unique_ptr<NacroRule> Rule;
+  NacroRule* Rule;
   Preprocessor& PP;
   SmallVector<IdentifierInfo*, 4> UnexpArgsII;
 };
@@ -218,7 +218,7 @@ Error NacroRuleExpander::Expand() {
     CreateMacroDirective(PP, Rule->getName(), Rule->getBeginLoc(),
                          ReplacementsII, {}, true);
     PP.addPPCallbacks(
-      std::make_unique<LoopExpandingPPCallbacks>(std::move(Rule), PP));
+      std::make_unique<LoopExpandingPPCallbacks>(Rule, PP));
   }
 
   return Error::success();

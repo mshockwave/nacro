@@ -34,18 +34,15 @@ public:
 };
 
 class NacroRuleParser : public NacroParser {
-  // Owner of this instance
-  std::unique_ptr<NacroRule> CurrentRule;
+  NacroRule* CurrentRule;
 
   Token CurTok;
 
 public:
   NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params);
 
-  NacroRule& getNacroRule() { return *CurrentRule; }
-  std::unique_ptr<NacroRule> releaseNacroRule() {
-    return std::move(CurrentRule);
-  }
+  inline
+  NacroRule* getNacroRule() { return CurrentRule; }
 
   inline void Advance() {
     PP.Lex(CurTok);
