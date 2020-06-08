@@ -29,6 +29,11 @@ public:
   inline NacroRule& getNacroRule() {
     return *Rule;
   }
+
+  inline
+  std::unique_ptr<NacroRule> releaseNacroRule() {
+    return std::move(Rule);
+  }
 };
 } // end namespace clang
 #endif

@@ -7,6 +7,7 @@
 
 #include "NacroParsers.h"
 #include "NacroExpanders.h"
+#include "NacroVerifier.h"
 #include <memory>
 
 using namespace clang;
@@ -49,6 +50,10 @@ void NacroPragmaHandler::HandlePragma(Preprocessor &PP,
 
     NacroRuleExpander Expander(std::move(Rule), PP);
     if(Expander.Expand()) return;
+
+    // FIXME: Make AddNacroRule completely static
+    NacroVerifier(PP.getSourceManager())
+      .AddNacroRule(Expander.releaseNacroRule());
   } else {
     llvm::errs() << "Unrecognized category: "
                  << Category << "\n";
