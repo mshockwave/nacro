@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # Simple wrapper to invoke lit's entry point
 from lit.main import main
 
