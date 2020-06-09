@@ -34,7 +34,6 @@ jobs:
         wget 'https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz'
         tar -xf clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
     - name: cmake
-      shell: bash
       run: |
         mkdir .build
         cd .build
@@ -43,14 +42,8 @@ jobs:
                        -DNACRO_ENABLE_UNITTESTS=ON \
                        -DNACRO_ENABLE_TESTS=ON ../
     - name: build
-      run: |
-        cd .build
-        ninja all
+      run: ninja -C .build all
     - name: check-units
-      run: |
-        cd .build
-        ninja check-units
+      run: ninja -C .build check-units
     - name: check
-      run: |
-        cd .build
-        ninja check
+      run: ninja -C .build check
