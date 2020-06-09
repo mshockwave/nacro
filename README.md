@@ -1,4 +1,6 @@
 # nacro
+![Build](https://github.com/mshockwave/nacro/workflows/Release%20Build%20with%20Prebuilt%20LLVM/Clang%2010.0.0/badge.svg)
+
 A better macro extension for C/C++. Implemented in Clang plugins. Inspired by Rust's macro system.
 ```cxx
 #pragma nacro rule myPrint
@@ -40,10 +42,15 @@ Here are the tool and version requirements:
 |      GCC     |        >=5.1.0       |                     Used to compile the plugin                    |
 | LLVM + Clang |        10.0.0        | Used to build and run the plugin. **Need to be exactly this version** |
 |    Python    |         >=3.0        |                 Only required if end-to-end tests are enabled                |
-|  Google Test |          Any         |              Only required if unit tests are enabled              |
+|  Google Test [[1]](#notes) |          Any         |              Only required if unit tests are enabled              |
 |     Ninja    |          Any         |        Optional. Feel free to use any build tool you prefer       |
 
 Since LLVM project neither has a stable Clang plugin interface nor has ABI compatibilities (even among minor version releases!). The LLVM + Clang bundle need to be exactly the version as stated above. We recommend to [download the prebuilt one from offical website](https://releases.llvm.org/download.html). 
+
+If you would like to enable end-to-end tests, several python packages are also required:
+```
+pip3 install lit filecheck
+```
 
 In addition to requirements above, you might also need to install `libtinfo` on Linux. It can be installed by `libtinfo-dev` package in Debian-family distros.
 
@@ -125,4 +132,17 @@ The root cause is that substitution of `arg`, which is happens to be `x`, will b
 Last but not the least, C/C++ macro system lacks a clean way to express repeatance text generation or substitution (i.e. loops). Making it less powerful than its counterpart in other languages (e.g. Rust).
 
 ## Features and Syntax
+### Macro Argument Types
 _TBA_
+
+### Argument Protection
+_TBA_
+
+### Loop
+_TBA_
+
+### Incorrect Capture Detection
+_TBA_
+
+## Notes
+[1]: Unfortunately pre-built google test is not widely available in mainstream Linux distributions. If that's the case, please follow the instructions from [here](https://github.com/google/googletest). And make sure it installed in CMake's default search path. That is, `/usr/lib` or `/usr/local/lib` in most cases.
