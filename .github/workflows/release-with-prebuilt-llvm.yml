@@ -22,8 +22,8 @@ jobs:
         wget 'https://github.com/google/googletest/archive/master.zip'
         unzip master.zip
         cd googletest-master
-        mkdir build
-        cd build
+        mkdir gtest_build
+        cd gtest_build
         cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr ../
         sudo ninja install
         sudo ln -fs /usr/lib/libgtest.a /usr/local/lib/libgtest.a
@@ -43,8 +43,14 @@ jobs:
                        -DNACRO_ENABLE_UNITTESTS=ON \
                        -DNACRO_ENABLE_TESTS=ON ../
     - name: build
-      run: ninja all
+      run: |
+        cd .build
+        ninja all
     - name: check-units
-      run: ninja check-units
+      run: |
+        cd .build
+        ninja check-units
     - name: check
-      run: ninja check
+      run: |
+        cd .build
+        ninja check
