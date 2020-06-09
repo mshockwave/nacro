@@ -1,0 +1,38 @@
+name: Release Build with Prebuilt LLVM/Clang 10.0.0
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-18.04
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: install-dependencies
+      run: |
+        sudo apt install -y ninja-build libtinfo-dev
+        sudo pip3 install lit filecheck
+    - name: download-prebuilt
+      run: |
+        wget 'https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz'
+        tar -xf clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz
+    - name: cmake
+      shell: bash
+      run: |
+        mkdir .build
+        cd .build
+        cmake -G Ninja -DLLVM_DIR=$PWD/../clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04/lib/cmake/llvm \
+                       -DClang_DIR=$PWD/../clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04/lib/cmake/clang \
+                       -DNACRO_ENABLE_UNITTESTS=ON \
+                       -DNACRO_ENABLE_TESTS=ON ../
+    - name: build
+      run: ninja all
+    - name: check-units
+      run: ninja check-units
+    - name: check
+      run: ninja check
