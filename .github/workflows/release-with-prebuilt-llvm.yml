@@ -17,6 +17,18 @@ jobs:
       run: |
         sudo apt install -y ninja-build libtinfo-dev python3-setuptools
         sudo pip3 install lit filecheck
+    - name: build-googletest
+      run: |
+        wget 'https://github.com/google/googletest/archive/master.zip'
+        unzip master.zip
+        cd googletest-master
+        mkdir build
+        cd build
+        cmake -G Ninja -DCMAKE_INSTALL_PREFIX=/usr ../
+        sudo ninja install
+        sudo ln -fs /usr/lib/libgtest.a /usr/local/lib/libgtest.a
+        sudo ln -fs /usr/lib/libgtest_main.a /usr/local/lib/libgtest_main.a
+        cd ../../
     - name: download-prebuilt
       run: |
         wget 'https://github.com/llvm/llvm-project/releases/download/llvmorg-10.0.0/clang+llvm-10.0.0-x86_64-linux-gnu-ubuntu-18.04.tar.xz'
