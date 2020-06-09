@@ -3,6 +3,8 @@ project(clang-new-macro)
 
 set(CMAKE_CXX_STANDARD 14)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Using LLVM ${LLVM_PACKAGE_VERSION}")

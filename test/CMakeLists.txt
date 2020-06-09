@@ -1,9 +1,10 @@
-# TODO: Try to make lit module on pypi works such that
-# users don't need a LLVM tree by them
-set(LLVM_LIT "${LLVM_BUILD_BINARY_DIR}/bin/llvm-lit")
-if(NOT EXISTS ${LLVM_LIT})
-  message(FATAL_ERROR "Tests require llvm-lit to run")
-endif()
+include(Python)
+
+find_python_module(lit REQUIRED)
+set(LLVM_LIT "${CMAKE_CURRENT_SOURCE_DIR}/llvm-lit.py")
+
+find_python_module(filecheck REQUIRED)
+set(FILECHECK_PATH "${PY_FILECHECK}/FileCheck.py")
 
 configure_file(lit.site.cfg.py.in lit.site.cfg.py @ONLY)
 

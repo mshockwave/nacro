@@ -2,6 +2,7 @@ import os
 
 config.llvm_bin_dir = os.path.join(r'@LLVM_BUILD_BINARY_DIR@', 'bin')
 config.llvm_lib_dir = r'@LLVM_BUILD_LIBRARY_DIR@'
+config.filecheck_path = r'@FILECHECK_PATH@'
 config.nacro_src_root = r'@CMAKE_SOURCE_DIR@'
 config.nacro_obj_root = r'@CMAKE_BINARY_DIR@'
 
