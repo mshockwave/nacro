@@ -62,6 +62,40 @@ TEST_F(NacroParserTest, TestRuleBasicLoop) {
   ASSERT_EQ(LI, Rule.loop_end());
 }
 
+TEST_F(NacroParserTest, TestRuleParseGeneratedType) {
+  {
+    auto PP = GetPP("(a:$expr) -> $expr { 1 + a }");
+    NacroRuleParser Parser(*PP, {});
+    ASSERT_TRUE(Parser.Parse());
+
+    auto& Rule = *Parser.getNacroRule();
+    ASSERT_EQ(Rule.getGeneratedType(),
+              NacroRule::ReplacementTy::Expr);
+    auto FirstTok = Rule.getToken(0),
+         LastTok = Rule.token_back();
+    ASSERT_TRUE(FirstTok.is(tok::l_paren));
+    ASSERT_TRUE(LastTok.is(tok::r_paren));
+    ASSERT_TRUE(llvm::none_of(Rule.tokens(),
+                              [](Token Tok) {
+                                return Tok.isOneOf(tok::l_brace, tok::r_brace);
+                              }));
+  }
+  {
+    auto PP = GetPP("(a:$expr) -> $stmt { printf(\"%d\", a) }");
+    NacroRuleParser Parser(*PP, {});
+    ASSERT_TRUE(Parser.Parse());
+
+    auto& Rule = *Parser.getNacroRule();
+    ASSERT_EQ(Rule.getGeneratedType(),
+              NacroRule::ReplacementTy::Stmt);
+    auto FirstTok = Rule.getToken(0),
+         LastTok = Rule.token_back();
+    ASSERT_TRUE(FirstTok.isNot(tok::l_brace));
+    ASSERT_TRUE(FirstTok.is(tok::identifier));
+    ASSERT_TRUE(LastTok.is(tok::semi));
+  }
+}
+
 TEST_F(NacroParserTest, TestRuleSourceLocation) {
   auto PP = GetPP("(a:$expr, b:$expr) -> {\n"
                   "  puts(a);\n"

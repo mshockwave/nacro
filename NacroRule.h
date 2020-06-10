@@ -53,6 +53,11 @@ struct NacroRule {
   /// null if name is not set
   IdentifierInfo* getName() const { return Name; }
 
+  ReplacementTy getGeneratedType() const { return GeneratedType; }
+  void setGeneratedType(ReplacementTy RT) {
+    GeneratedType = RT;
+  }
+
   void setSourceRange(SourceRange SR) {
     SrcRange = SR;
   }
@@ -73,6 +78,9 @@ private:
   /// a.k.a Macro rule arguments
   llvm::SmallVector<Replacement, 2> Replacements;
 
+  /// a.k.a 'return type'
+  ReplacementTy GeneratedType;
+
   /// Note that a loop region is surrounded by a pair of
   /// tok::annot_pragma_loop_hint
   llvm::SmallVector<Token, 16> Tokens;
@@ -80,7 +88,8 @@ private:
   llvm::SmallVector<Loop, 2> Loops;
 
   NacroRule(IdentifierInfo* NameII)
-    : Name(NameII), SrcRange() {}
+    : Name(NameII), SrcRange(),
+      GeneratedType(ReplacementTy::Block) {}
 
 public:
   static NacroRule* Create(IdentifierInfo* NameII);

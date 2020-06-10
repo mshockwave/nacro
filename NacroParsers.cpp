@@ -221,6 +221,46 @@ bool NacroRuleParser::ParseLoop() {
   return true;
 }
 
+/// Wrap body with correct enclosment symbols
+/// based on generated type
+void NacroRuleParser::WrapNacroBody() {
+  switch(CurrentRule->getGeneratedType()) {
+  case NacroRule::ReplacementTy::Expr: {
+    // replace with parens
+    Token FirstTok = CurrentRule->getToken(0),
+          LastTok = CurrentRule->token_back();
+    FirstTok.setKind(tok::l_paren);
+    LastTok.setKind(tok::r_paren);
+
+    auto Head = CurrentRule->erase_token(CurrentRule->token_begin());
+    CurrentRule->insert_token(Head, FirstTok);
+    auto Tail = CurrentRule->insert_token(CurrentRule->token_end(),
+                                          LastTok);
+    CurrentRule->erase_token(--Tail);
+    break;
+  }
+  case NacroRule::ReplacementTy::Stmt: {
+    // remove any enclosement and add semi-colon at the end
+    // if there hasn't any
+    CurrentRule->erase_token(CurrentRule->token_begin());
+
+    auto LastTok = CurrentRule->token_back();
+    LastTok.setKind(tok::semi);
+    auto Tail = CurrentRule->insert_token(CurrentRule->token_end(),
+                                          LastTok);
+    Tail = CurrentRule->erase_token(--Tail);
+    if((--Tail)->is(tok::semi)) {
+      // has duplicate, remove the last one
+      CurrentRule->erase_token(++Tail);
+    }
+    break;
+  }
+  default:
+    // Both block and ident will remain the same
+    return;
+  }
+}
+
 bool NacroRuleParser::Parse() {
   if(HasEncounteredError) return false;
 
@@ -234,22 +274,40 @@ bool NacroRuleParser::Parse() {
     return false;
   }
 
-  auto BeginLoc = Tok.getLocation();
+  // first token of the entire nacro, including argument list
+  auto FirstTok = Tok;
 
   if(!ParseArgList()) return false;
 
+  // '->'
   PP.Lex(Tok);
   if(Tok.isNot(tok::arrow)) {
     PP.Diag(Tok, diag::err_expected) << tok::arrow;
     return false;
   }
 
+  // generated type
   Advance();
+  if(CurTok.is(tok::identifier)) {
+    // Explicitily specified the generated type
+    auto* GII = CurTok.getIdentifierInfo();
+    assert(GII);
+    auto GT = NacroRule::GetReplacementTy(GII->getName());
+    if(GT == NacroRule::ReplacementTy::UNKNOWN) {
+      PP.Diag(Tok, diag::err_unknown_typename) << GII->getName();
+      return false;
+    }
+    CurrentRule->setGeneratedType(GT);
+    Advance();
+  }
+
   auto Res = ParseStmts();
   if(Res) {
+    WrapNacroBody();
+
     auto LastTok = CurrentRule->token_back();
-    auto EndLoc = LastTok.getEndLoc();
-    CurrentRule->setSourceRange(SourceRange(BeginLoc, EndLoc));
+    CurrentRule->setSourceRange(SourceRange(FirstTok.getLocation(),
+                                            LastTok.getEndLoc()));
   }
 
   return Res;

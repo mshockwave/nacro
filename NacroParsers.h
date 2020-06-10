@@ -38,6 +38,8 @@ class NacroRuleParser : public NacroParser {
 
   Token CurTok;
 
+  void WrapNacroBody();
+
 public:
   NacroRuleParser(Preprocessor& PP, llvm::ArrayRef<Token> Params);
 
