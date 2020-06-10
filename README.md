@@ -4,8 +4,8 @@
 A better macro extension for C/C++. Implemented in Clang plugins. Inspired by Rust's macro system.
 ```cxx
 #pragma nacro rule myPrint
-(val:$expr) -> {
-    printf("%d\n", val * 2);
+(val:$expr) -> $stmt {
+    printf("%d\n", val * 2)
 }
 
 #pragma nacro rule genColors
@@ -23,7 +23,8 @@ void printColor(enum Color color) {
 }
 
 int main() {
-    myPrint(1 + 3) // print out '8'
+    myPrint(1 + 3)   // print out '8'
+    printColor(RED); // print 'the color is RED'
     return 0;
 }
 ```
