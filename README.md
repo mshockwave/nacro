@@ -89,18 +89,13 @@ ninja check
 ```
 
 ### Usages
-To run syntax-only check with the plugin:
+To use this plugin in an easier way without adding bunch of `-Xclang` options to clang, we've created a simple wrapper script to load plugin into the clang you build against with:
 ```
-clang -fsyntax-only \
-      -Xclang -load -Xclang /path/to/NacroPlugin.so \
-      input.c
+/your/build/dir/clang-nacro -fsyntax input.c
 ```
-To generate executable:
 ```
-clang -Xclang -load -Xclang /path/to/NacroPlugin.so \
-      input.c -o exe_out
+/your/build/dir/clang-nacro -o out_exe input.c
 ```
-Note that due to ABI compatibility issue, the `clang` above need to be **exactly the one from LLVM/Clang tree you used to build the plugin**.
 
 ## Motivations
 The C/C++ macro system adopts a copy-and-paste style text replacement that leads to many problems. For example, values might unintentionally be mixed up with adjacent operands in an expression.
