@@ -188,7 +188,7 @@ hello stuff
 $
 ```
 
-Of course, this is not the full story, there are other cool features waiting for you to explore in the [wiki](https://github.com/mshockwave/nacro/wiki).
+Of course, this is not the full story. Other features like [Invalid Capture Detection](https://github.com/mshockwave/nacro/wiki/Invalid-Capture-Detection) are waiting for you to explore in the [wiki](https://github.com/mshockwave/nacro/wiki)!
 
 ## Motivations
 The C/C++ macro system adopts a copy-and-paste style text replacement that leads to many problems. For example, values might unintentionally be mixed up with adjacent operands in an expression.
