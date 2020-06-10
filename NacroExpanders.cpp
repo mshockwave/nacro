@@ -55,6 +55,16 @@ Error NacroRuleExpander::ReplacementProtecting() {
         using RTy = typename NacroRule::ReplacementTy;
         switch(R.Type) {
         case RTy::Expr: {
+          // Don't add parens if it's gonna be stringify later
+          if(TI != Rule->token_begin()) {
+            auto PrevTI = TI;
+            --PrevTI;
+            if(PrevTI->is(tok::hash)) {
+              ++TI;
+              continue;
+            }
+          }
+
           ++TI;
           Token LParen, RParen;
           RParen.startToken();

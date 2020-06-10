@@ -95,6 +95,17 @@ TEST_F(NacroParserTest, TestRuleStringify) {
                               return Tok.is(tok::identifier) &&
                                      Tok.getIdentifierInfo()->isStr("$str");
                             }));
-  ASSERT_TRUE(llvm::any_of(Rule.tokens(),
-                           [](Token Tok) { return Tok.is(tok::hash); }));
+
+  int I, E;
+  for(I = 0, E = Rule.token_size(); I < E; ++I) {
+    auto Tok = Rule.getToken(I);
+    if(Tok.is(tok::hash)) {
+      ASSERT_LT(I + 1, E);
+      auto NextTok = Rule.getToken(I + 1);
+      ASSERT_TRUE(NextTok.is(tok::identifier));
+      ASSERT_TRUE(NextTok.getIdentifierInfo()->isStr("a"));
+      break;
+    }
+  }
+  ASSERT_LT(I, E);
 }
