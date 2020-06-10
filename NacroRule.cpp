@@ -19,7 +19,6 @@ NacroRule* NacroRule::Create(IdentifierInfo* NameII) {
 NacroRule::ReplacementTy NacroRule::GetReplacementTy(StringRef RawType) {
   return llvm::StringSwitch<ReplacementTy>(RawType)
           .Case("$expr", ReplacementTy::Expr)
-          .Case("$ident", ReplacementTy::Ident)
           .Case("$stmt", ReplacementTy::Stmt)
           .Case("$block", ReplacementTy::Block)
           .Default(ReplacementTy::UNKNOWN);

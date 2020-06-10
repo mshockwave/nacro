@@ -4,7 +4,7 @@
 #include <stdio.h>
 
 #pragma nacro rule foo
-(a:$ident*) -> {
+(a:$expr*) -> {
   $loop(i in a) {
     printf("hello %s\n", $str(i));
   }

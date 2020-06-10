@@ -255,8 +255,8 @@ void NacroRuleParser::WrapNacroBody() {
     }
     break;
   }
-  default:
-    // Both block and ident will remain the same
+  case NacroRule::ReplacementTy::Block:
+    // block will remain the same
     return;
   }
 }

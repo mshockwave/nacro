@@ -119,7 +119,7 @@ TEST_F(NacroParserTest, TestRuleSourceLocation) {
 }
 
 TEST_F(NacroParserTest, TestRuleStringify) {
-  auto PP = GetPP("(a:$ident) -> { printf(\"%s\\n\", $str(a)); }");
+  auto PP = GetPP("(a:$expr) -> { printf(\"%s\\n\", $str(a)); }");
   NacroRuleParser Parser(*PP, {});
   ASSERT_TRUE(Parser.Parse());
 

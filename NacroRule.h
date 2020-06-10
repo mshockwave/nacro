@@ -16,7 +16,6 @@ struct NacroRule {
   enum class ReplacementTy {
     UNKNOWN,
     Expr,
-    Ident,
     Stmt,
     Block
   };
