@@ -109,15 +109,49 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
                    ArrayRef<std::vector<Token>> ExpVAArgs,
                    SmallVectorImpl<Token>& OutputBuffer) {
     auto* IndVarII = LoopInfo.InductionVar;
+    Token PrevTok, Tok;
     for(const auto& Arg : ExpVAArgs) {
-      for(auto& Tok : LoopBody) {
+      assert(Arg.size() > 0);
+
+      PrevTok.startToken();
+      PrevTok.setKind(tok::eof);
+      for(int I = 0, E = LoopBody.size(); I < E; ++I) {
+        if(I > 0) PrevTok = LoopBody[I - 1];
+        Tok = LoopBody[I];
         if(Tok.is(tok::identifier) &&
            Tok.getIdentifierInfo() == IndVarII) {
-          for(auto ArgTok : Arg) {
-            ArgTok.setLocation(Tok.getLocation());
-            OutputBuffer.push_back(ArgTok);
+          if(PrevTok.is(tok::hash)){
+            // Need to stringify
+            auto BeginLoc = PrevTok.getLocation(),
+                 EndLoc = Tok.getLocation();
+            auto StrTok = MacroArgs::StringifyArgument(Arg.data(), PP, false,
+                                                       BeginLoc, EndLoc);
+            // FIXME: Here is one of the most dirty workarounds in this
+            // project: Stringify can not be naturally dropped in here because
+            // we manually expand the VA arguments before stringify got
+            // applied on actual parameters. So the only way is to stringify
+            // ourself while we're manually expanding the VA arguments. But
+            // TokenLexer, which is the consumer of macro tokens, require
+            // every tokens in a macro comes from real text (i.e. isFileID
+            // needs to be true). But StrTok is born in scratch buffer. The
+            // workaround here is simply pick a random location in the macro
+            // and set it as StrTok's location. Which will 100% hinder the error
+            // message and debug experiences.
+            StrTok.setLocation(Tok.getLocation());
+            StrTok.setFlag(Token::StringifiedInMacro);
+            OutputBuffer.push_back(StrTok);
+          } else {
+            for(auto ArgTok : Arg) {
+              if(ArgTok.isNot(tok::eof)) {
+                ArgTok.setLocation(Tok.getLocation());
+                OutputBuffer.push_back(ArgTok);
+              }
+            }
           }
         } else {
+          // we will stringify by ourself
+          if(Tok.is(tok::hash)) continue;
+
           OutputBuffer.push_back(Tok);
         }
       }
@@ -148,6 +182,14 @@ struct LoopExpandingPPCallbacks : public PPCallbacks {
       if(!Tok.isOneOf(tok::eof, tok::comma)) {
         VABuffer.push_back(Tok);
       } else {
+        // MacroArgs::StringifyArgument require
+        // input actual paramater list to be ended
+        // by tok::eof
+        Token EofTok;
+        EofTok.startToken();
+        EofTok.setKind(tok::eof);
+        VABuffer.push_back(EofTok);
+
         ExpVAArgs.push_back(VABuffer);
         VABuffer.clear();
       }

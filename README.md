@@ -18,7 +18,7 @@ A better macro extension for C/C++. Implemented in Clang plugins. Inspired by Ru
 }
 
 enum Color { RED, BLUE, YELLOW };
-void printColor(Color color) {
+void printColor(enum Color color) {
     switch(color) genColors(RED, BLUE, YELLOW)
 }
 
